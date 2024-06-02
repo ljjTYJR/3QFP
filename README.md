@@ -10,20 +10,17 @@
 
 # Overview
 
-
-
+**Overview of our method.**
 <p align="center">
-	<a href="">
-        <img src="./assets/poster.jpg" alt="teaser" width="30%">
-    </a>
     <a href="">
     	<img src="./assets/teaser.jpg" alt="teaser" width="100%">
     </a>
+    <a href="">
+        <img src="./assets/caption.png" alt="caption" width="100%">
+    </a>
 </p>
 
-**Overview of our method.**
-
-We represent the scene with three planar quadtrees $\mathcal{M}_{i}^{\ell}$, $i \in \{XZ,YZ,XY\}$ and $\ell$ represents the quadtree depth. We store features in the deepest $H$ levels of resolution of quadtrees. When querying for a point $\mathbf{p}$, we project it onto planar quadtrees to identify the node containing $\mathbf{p}$ at the level $\ell$. The feature of $\mathbf{p}$ is then calculated by bilinear interpolation based on the queried location and vertex features. We add features at the same level and concatenate among different levels. Concatenated with the positional encoding $\gamma(\mathbf{p})$, $\mathbf{p}$'s feature~($\Phi(\mathbf{p})$) is fed into a small MLP~($\mathcal{F}_\Theta$) to predict the SDF value. The learnable features stored in the quadtree nodes and the network parameters are optimized in real-time using the loss function $\mathcal{L}_{\text{bce}}$. The learnable feature vectors have length $d$ and the positional encoding feature vector has length $6m$.
+<!-- We represent the scene with three planar quadtrees $\mathcal{M}_{i}^{\ell}$, $i \in \{XZ,YZ,XY\}$ and $\ell$ represents the quadtree depth. We store features in the deepest $H$ levels of resolution of quadtrees. When querying for a point $\mathbf{p}$, we project it onto planar quadtrees to identify the node containing $\mathbf{p}$ at the level $\ell$. The feature of $\mathbf{p}$ is then calculated by bilinear interpolation based on the queried location and vertex features. We add features at the same level and concatenate among different levels. Concatenated with the positional encoding $\gamma(\mathbf{p})$, $\mathbf{p}$'s feature~($\Phi(\mathbf{p})$) is fed into a small MLP~($\mathcal{F}_\Theta$) to predict the SDF value. The learnable features stored in the quadtree nodes and the network parameters are optimized in real-time using the loss function $\mathcal{L}_{\text{bce}}$. The learnable feature vectors have length $d$ and the positional encoding feature vector has length $6m$. -->
 
 # Installation
 The code is based on the implementation of nice work [SHINE-Mapping](https://github.com/PRBonn/SHINE_mapping), so we suggests the same way to install:
@@ -46,5 +43,25 @@ pip install open3d scikit-image wandb tqdm natsort pyquaternion pyyaml torch_sca
 pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch # for ff encoding
 ```
 
-# Running
+# Dataset
+Also, similarly, we suggest the download scripts from SHINE-Mapping.
+- `MaiCity` dataset
+```
+sh ./scripts/download_maicity.sh
+```
+- `KITTI` dataset
+```
+sh ./scripts/download_kitti_example.sh
+```
+- `Newer College`
+```
+sh ./scripts/download_ncd_example.sh
+```
+In the configuration (.yaml) files, you can specify the dataset path.
 
+`pc_path`: the folder containing the point cloud (.bin, .ply or .pcd format) for each frame.
+`pose_path` : the pose file (.txt) containing the transformation matrix of each frame.
+`calib_path` : the calib file (.txt) containing the static transformation between sensor and body frames (optional, would be identity matrix if set as '').
+
+# Run
+`python run.py ./config/maicity/maicity_batch.yaml`
