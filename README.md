@@ -1,12 +1,24 @@
 # 3QFP
-3QFP: Efficient neural implicit surface reconstruction using Tri-Quadtrees and Fourier feature Positional encoding [ICRA24]
+<p align="center">
+  	<h2 align="center">
+      3QFP: Efficient neural implicit surface reconstruction using Tri-Quadtrees and Fourier feature Positional encoding [ICRA24]
+	</h2>
+	<h2 align="center">
+        <a href="https://arxiv.org/abs/2401.07164">Arxiv</a>
+	</h2>
+</p>
 
 # Overview
 
+
+
 <p align="center">
-  <a href="">
-    <img src="./assets/teaser.jpg" alt="teaser" width="100%">
-  </a>
+	<a href="">
+        <img src="./assets/poster.jpg" alt="teaser" width="30%">
+    </a>
+    <a href="">
+    	<img src="./assets/teaser.jpg" alt="teaser" width="100%">
+    </a>
 </p>
 
 **Overview of our method.**
