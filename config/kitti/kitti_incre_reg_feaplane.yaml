@@ -1,0 +1,107 @@
+setting:
+  name: "kitti_incre_reg_seq_07"
+  output_root: "./experiments/"
+  # pc_path: "/home/shuo/projects/shuo/implicit_reconstruction/SHINE_mapping/data/kitti_example/sequences/00/velodyne"
+  pc_path: "/media/shuo/T7/kitti/sequences/07/velodyne"
+  # label_path: "/home/shuo/projects/shuo/implicit_reconstruction/SHINE_mapping/data/kitti_example/sequences/00/labels" # optional for semantic mapping
+  # pose_path: "/home/shuo/projects/shuo/implicit_reconstruction/SHINE_mapping/data/kitti_example/sequences/00/poses.txt"
+  pose_path: "/media/shuo/T7/kitti/poses/07.txt"
+  # calib_path: "/home/shuo/projects/shuo/implicit_reconstruction/SHINE_mapping/data/kitti_example/sequences/00/calib.txt"
+  calib_path: "/media/shuo/T7/kitti/sequences/07/calib.txt"
+  load_model: False
+  model_path: ""
+  first_frame_ref: True
+  begin_frame: 0
+  end_frame: 1100
+  every_frame: 2 # 1 means does not skip
+  device: "cuda"
+  gpu_id: "0"
+  debug: False
+
+
+process:
+  min_range_m: 3.0
+  pc_radius_m: 25.0  # TODO:
+  min_z_m: -3.5
+  rand_downsample: False # use random or voxel downsampling
+  vox_down_m: 0.05
+  rand_down_r: 0.2
+
+sampler:
+  surface_sample_range_m: 0.5
+  surface_sample_n: 3
+  free_sample_begin_ratio: 0.3
+  free_sample_end_dist_m: 1.0
+  free_sample_n: 3
+
+fea_encoding:
+  type: 'fea_plane' # 'fea_octree' or 'fea_plane'
+  use_features: True
+  use_fixed_encoding: True
+  progressive: False
+  feature_dim: 8
+  poly_int_on: False
+  fea_octree:
+    octree_fea_combine: 'add'
+  fea_plane:
+    regularization_loss_on: True
+    record_feature_loss: False
+    weight_r: 0.05
+  fixed_encoding:
+    fixed_enc_type: 'ff' # 'freq' or 'ff' 'freq_nn'
+    # for 'freq'
+    n_bins: 16
+    n_freq: 16
+    # for 'ff'
+    gaussian_scale: 50
+    embedding_size: 16 # final: [3*embedding_size*2]
+  octree:
+    leaf_vox_size: 0.2
+    tree_level_world: 12
+    tree_level_feat: 3
+    octree_from_surface_samples: True
+  prior_estimation:
+    opt_cor_sdf_only: False
+    cor_sdf_w_feature: False
+    coarse_compute: 'Nearest' # ['Average', 'Nearest', `NDT`, `Project`]
+
+decoder:
+  mlp_level: 2
+  mlp_hidden_dim: 32
+  freeze_after_frame: 20
+
+loss:
+  ray_loss: False
+  main_loss_type: sdf_bce  # select from sdf_bce (our proposed), sdf_l1, sdf_l2, dr, dr_neus
+  sigma_sigmoid_m: 0.1
+  loss_weight_on: False
+  behind_dropoff_on: False
+  ekional_loss_on: False
+  weight_e: 0.1
+
+
+continual:
+  continual_learning_reg: True # using incremental mapping with regularization
+  lambda_forget: 1e4 # the larger this value, the model would be less likely to forget
+  window_replay_on: False # replay within the sliding window
+  window_radius_m: 0
+
+
+optimizer:
+  iters: 100  # iterations per frame
+  batch_size: 4096
+  learning_rate: 0.01
+  weight_decay: 1e-7 # l2 regularization
+  lr_decay_step: [50000, 70000, 100000]
+
+
+eval:
+  wandb_vis_on: False # log to wandb or not
+  o3d_vis_on: False # visualize the mapping or not
+  vis_freq_iters: 0
+  save_freq_iters: 10000 # save the model and octree every x iterations
+  mesh_freq_frame: 50 # reconstruct the mesh every x frames
+  mc_res_m: 0.1 # reconstruction marching cubes resolution
+  mc_with_octree: False # querying sdf only in certain levels of the octree
+  mc_vis_level: 1
+  save_map: False # save the sdf map or not
