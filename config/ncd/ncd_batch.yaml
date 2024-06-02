@@ -1,9 +1,9 @@
 setting:
   name: "ncd_batch"
   output_root: "./experiments/"
-  pc_path: "/media/shuo/T7/NewerCollege/ncd_example/quad/pcd"
-  pose_path: "/media/shuo/T7/NewerCollege/ncd_example/quad/poses.txt"
-  calib_path: "/media/shuo/T7/NewerCollege/ncd_example/quad/calib.txt"
+  pc_path: "NewerCollege/ncd_example/quad/pcd"
+  pose_path: "NewerCollege/ncd_example/quad/poses.txt"
+  calib_path: "NewerCollege/ncd_example/quad/calib.txt"
   load_model: False
   model_path: ""
   first_frame_ref: False

@@ -1,10 +1,9 @@
 setting:
   name: "kitt_seq_00"
   output_root: "./experiments/"
-  # path: &prefix "/home/shuo/projects/shuo/implicit_reconstruction/SHINE_mapping"
-  pc_path: "/media/shuo/T7/kitti/sequences/07/velodyne"
-  pose_path: "/media/shuo/T7/kitti/poses/07.txt"
-  calib_path: "/media/shuo/T7/kitti/sequences/07/calib.txt"
+  pc_path: "kitti/sequences/07/velodyne"
+  pose_path: "kitti/poses/07.txt"
+  calib_path: "kitti/sequences/07/calib.txt"
   load_model: False
   model_path: ""
   first_frame_ref: False
