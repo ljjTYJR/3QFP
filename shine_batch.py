@@ -36,45 +36,17 @@ def run_mapping_batch():
 
     fea_enc = FeatureEncoder(config).fea_encoder
     geo_mlp = Decoder(config, is_geo_encoder=True, is_time_conditioned=config.time_conditioned, in_dim=fea_enc.out_dim)
-    sem_mlp = Decoder(config, is_geo_encoder=False)
-
-    # load the decoder model
-    """
-    if config.load_model:
-        loaded_model = torch.load(config.model_path)
-        geo_mlp.load_state_dict(loaded_model["geo_decoder"])
-        print("Pretrained decoder loaded")
-        freeze_model(geo_mlp) # fixed the decoder
-        if config.semantic_on:
-            sem_mlp.load_state_dict(loaded_model["sem_decoder"])
-            freeze_model(sem_mlp) # fixed the decoder
-        if 'feature_octree' in loaded_model.keys(): # also load the feature octree
-            octree = loaded_model["feature_octree"]
-            octree.print_detail()
-    """
 
     # dataset
     dataset = LiDARDataset(config, fea_enc)
 
-    # NOTE only for debug now
-    mesher = Mesher(config, fea_enc, geo_mlp, sem_mlp)
+    mesher = Mesher(config, fea_enc, geo_mlp, None)
     mesher.global_transform = inv(dataset.begin_pose_inv)
-
-    # Visualizer on
-    if config.o3d_vis_on:
-        vis = MapVisualizer()
 
     # for each frame
     print("Load, preprocess and sample data")
     frame_cnt = 0
     for frame_id in tqdm(range(dataset.total_pc_count)):
-        """
-        # For kitti, no need to load the last frame
-        if frame_id == dataset.total_pc_count-1:
-            print("force to load the last frame:", frame_id)
-            dataset.process_frame(frame_id)
-            break
-        """
         if (frame_id < config.begin_frame or frame_id > config.end_frame or \
             frame_id % config.every_frame != 0):
             continue
@@ -93,7 +65,6 @@ def run_mapping_batch():
     # learnable parameters
     fea_enc_param = list(fea_enc.parameters())
     geo_mlp_param = list(geo_mlp.parameters())
-    sem_mlp_param = list(sem_mlp.parameters())
     # learnable sigma for differentiable rendering
     sigma_size = torch.nn.Parameter(torch.ones(1, device=dev)*1.0)
     # fixed sigma for sdf prediction supervised with BCE loss
@@ -103,7 +74,7 @@ def run_mapping_batch():
     dataset.write_merged_pc(pc_map_path)
 
     # initialize the optimizer
-    opt = setup_optimizer(config, fea_enc_param, geo_mlp_param, sem_mlp_param, sigma_size)
+    opt = setup_optimizer(config, fea_enc_param, geo_mlp_param, None, sigma_size)
     # get the size of the parameters
     print("Number of parameters: ", sum(p.numel() for p in fea_enc_param) + \
         sum(p.numel() for p in geo_mlp_param))
@@ -116,8 +87,6 @@ def run_mapping_batch():
 
     if config.fea_encoder_type == 'fea_octree':
         fea_enc.print_detail()
-
-    # octree.print_detail()
 
     if config.normal_loss_on or config.ekional_loss_on or config.proj_correction_on or config.consistency_loss_on:
         require_gradient = True
@@ -164,8 +133,6 @@ def run_mapping_batch():
 
         surface_mask = weight > 0
 
-        # if config.normal_loss_on or config.ekional_loss_on:
-        # use non-projective distance, gradually refined
         if require_gradient:
             g = get_gradient(coord, pred)*sigma_sigmoid
 
@@ -173,18 +140,6 @@ def run_mapping_batch():
             cos = torch.abs(F.cosine_similarity(g, coord - origin))
             cos[~surface_mask] = 1.0
             sdf_label = sdf_label * cos
-
-        # consistency_loss_on is not set in the config file
-        if config.consistency_loss_on:
-            near_index = torch.randint(0, coord.shape[0], (min(config.consistency_count,coord.shape[0]),), device=dev)
-            shift_scale = config.consistency_range * config.scale # 10 cm
-            random_shift = torch.rand_like(coord) * 2 * shift_scale - shift_scale
-            coord_near = coord + random_shift
-            coord_near = coord_near[near_index, :] # only use a part of these coord to speed up
-            coord_near.requires_grad_(True)
-            feature_near = octree.query_feature(coord_near)
-            pred_near = geo_mlp.sdf(feature_near)
-            g_near = get_gradient(coord_near, pred_near)*sigma_sigmoid
 
         cur_loss = 0.
         # calculate the loss
@@ -207,18 +162,6 @@ def run_mapping_batch():
                 sdf_loss = sdf_diff_loss(pred, sdf_label, weight, config.scale, l2_loss=True)
             cur_loss += sdf_loss
 
-        # optional loss (ekional, normal, gradient consistency loss)
-        eikonal_loss = 0.
-        if config.ekional_loss_on:
-            eikonal_loss = ((1.0 - g[surface_mask].norm(2, dim=-1)) ** 2).mean() # MSE with regards to 1
-            cur_loss += config.weight_e * eikonal_loss
-
-        """
-        consistency_loss = 0.
-        if config.consistency_loss_on:
-            consistency_loss = (1.0 - F.cosine_similarity(g[near_index, :], g_near)).mean()
-            cur_loss += config.weight_c * consistency_loss
-        """
         regularization_loss = 0.
         if config.regularization_loss_on:
             regularization_loss = fea_enc.cal_regularization_loss()
@@ -232,13 +175,6 @@ def run_mapping_batch():
             normal_diff = g_direction - normal_label
             normal_loss = (normal_diff[surface_mask].abs()).norm(2, dim=1).mean()
             cur_loss += config.weight_n * normal_loss
-
-        # semantic classification loss
-        sem_loss = 0.
-        if config.semantic_on:
-            loss_nll = nn.NLLLoss(reduction='mean')
-            sem_loss = loss_nll(sem_pred[::config.sem_label_decimation,:], sem_label[::config.sem_label_decimation])
-            cur_loss += config.weight_s * sem_loss
 
         T4 = get_time()
         # save the loss and iter to the file
@@ -256,52 +192,6 @@ def run_mapping_batch():
 
         T5 = get_time()
 
-        # log to wandb
-        if config.wandb_vis_on:
-            if config.ray_loss:
-                wandb_log_content = {'iter': iter, 'loss/total_loss': cur_loss, 'loss/render_loss': dr_loss, 'loss/eikonal_loss': eikonal_loss, 'loss/normal_loss': normal_loss, 'para/sigma': sigma_size}
-            else:
-                wandb_log_content = {'iter': iter, 'loss/total_loss': cur_loss, 'loss/sdf_loss': sdf_loss, 'loss/eikonal_loss': eikonal_loss, 'loss/normal_loss': normal_loss, 'loss/consistency_loss': consistency_loss, 'loss/sem_loss': sem_loss}
-            wandb_log_content['timing(s)/load'] = T1 - T0
-            wandb_log_content['timing(s)/get_indices'] = T2 - T1
-            wandb_log_content['timing(s)/inference'] = T3 - T2
-            wandb_log_content['timing(s)/cal_loss'] = T4 - T3
-            wandb_log_content['timing(s)/back_prop'] = T5 - T4
-            wandb_log_content['timing(s)/total'] = T5 - T0
-            wandb.log(wandb_log_content)
-
-        # reconstruction by marching cubes
-        # if (((iter+1) % config.vis_freq_iters) == 0 and iter > 0):
-        #     print("Begin mesh reconstruction from the implicit map")
-        #     if not config.time_conditioned:
-        #         mesh_path = run_path + '/mesh/mesh_iter_' + str(iter+1) + ".ply"
-        #         map_path = run_path + '/map/sdf_map_iter_' + str(iter+1) + ".ply"
-        #         if config.mc_with_octree: # default
-        #             cur_mesh = mesher.recon_octree_mesh(config.mc_query_level, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
-        #         else:
-        #             cur_mesh = mesher.recon_bbx_mesh(dataset.map_bbx, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
-        #         if config.o3d_vis_on:
-        #             cur_mesh.transform(dataset.begin_pose_inv)
-        #             vis.update_mesh(cur_mesh)
-        #     else:
-        #         vis.stop()
-        #         for frame_id in tqdm(range(dataset.total_pc_count)):
-        #             if (frame_id < config.begin_frame or frame_id > config.end_frame or \
-        #                 frame_id % 2 != 0):
-        #                 continue
-        #             mesher.ts = frame_id
-        #             mesh_path = run_path + '/mesh/mesh_iter_' + str(iter+1) + '_ts_' + str(frame_id) + ".ply"
-        #             map_path = run_path + '/map/sdf_map_iter_' + str(iter+1) + '_ts_' + str(frame_id) + ".ply"
-        #             if config.mc_with_octree: # default
-        #                 cur_mesh = mesher.recon_octree_mesh(config.mc_query_level, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
-        #             else:
-        #                 cur_mesh = mesher.recon_bbx_mesh(dataset.map_bbx, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
-
-        #             if config.o3d_vis_on:
-        #                 cur_mesh.transform(dataset.begin_pose_inv)
-        #                 vis.update_mesh(cur_mesh)
-    # at last, always reconstruct the mesh
-
     # save checkpoint model
     checkpoint_name = 'model/model_iter_' + str(iter+1)
     # octree.clear_temp()
@@ -314,9 +204,6 @@ def run_mapping_batch():
     map_path = run_path + '/map/sdf_map_iter_' + str(iter+1) + '_ts_' + str(0) + ".ply"
     cur_mesh = mesher.recon_bbx_mesh(dataset.map_bbx, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
     # cur_mesh = mesher.recon_octree_mesh(config.mc_query_level, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
-
-    if config.o3d_vis_on:
-        vis.stop()
 
 if __name__ == "__main__":
     run_mapping_batch()

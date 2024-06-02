@@ -60,7 +60,6 @@ class FeaturePlane(nn.Module):
 
         self.corners_lookup_tables = [] # from corner morton to corner index (top-down)
         self.nodes_lookup_tables = []
-        # TODO Is it reasonable?
         self.xy_nodes_lookup_tables = []
         self.xy_corners_lookup_tables = []
         self.xz_nodes_lookup_tables = []

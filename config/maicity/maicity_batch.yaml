@@ -44,7 +44,7 @@ fea_encoding:
     record_feature_loss: False
     weight_r: 0.05
   fixed_encoding:
-    fixed_enc_type: 'ff' # 'freq' or 'ff' 'freq_nn'
+    fixed_enc_type: 'freq_nn' # 'freq' or 'ff' 'freq_nn'
     # for 'freq'
     n_bins: 16
     n_freq: 16
