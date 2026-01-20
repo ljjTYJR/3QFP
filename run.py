@@ -202,8 +202,8 @@ def run_mapping_batch():
         copyfile(sys.argv[1], run_path + '/config.yaml')
     mesh_path = run_path + '/mesh/mesh_iter_' + str(iter+1) + ".ply"
     map_path = run_path + '/map/sdf_map_iter_' + str(iter+1) + '_ts_' + str(0) + ".ply"
-    cur_mesh = mesher.recon_bbx_mesh(dataset.map_bbx, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
-    # cur_mesh = mesher.recon_octree_mesh(config.mc_query_level, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
+    # cur_mesh = mesher.recon_bbx_mesh(dataset.map_bbx, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
+    cur_mesh = mesher.recon_octree_mesh(config.mc_query_level, config.mc_res_m, mesh_path, map_path, config.save_map, config.semantic_on)
 
 if __name__ == "__main__":
     run_mapping_batch()

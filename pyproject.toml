@@ -1,0 +1,50 @@
+[project]
+name = "3qfp"
+version = "0.1.0"
+description = "3D mapping and reconstruction project"
+requires-python = ">=3.7,<3.10"
+dependencies = [
+    "numpy<2",
+    "tqdm",
+    "wandb",
+    "torch==1.12.1",
+    "torchvision==0.13.1",
+    "torchaudio==0.12.1",
+    "open3d",
+    "pyquaternion",
+    "scipy",
+    "scikit-image",
+    "natsort",
+    "pyyaml",
+    "werkzeug>=2.0,<3.0",
+    "flask>=2.0,<3.0",
+    "kaolin==0.12.0",
+    "torch-scatter==2.1.0",
+    "tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn.git@master#subdirectory=bindings/torch",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu116" }
+torchvision = { index = "pytorch-cu116" }
+torchaudio = { index = "pytorch-cu116" }
+kaolin = { index = "kaolin-cu116" }
+torch-scatter = { index = "torch-scatter-cu116" }
+
+[[tool.uv.index]]
+name = "pytorch-cu116"
+url = "https://download.pytorch.org/whl/cu116"
+
+[[tool.uv.index]]
+name = "kaolin-cu116"
+url = "https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-1.12.1_cu116.html"
+
+[[tool.uv.index]]
+name = "torch-scatter-cu116"
+url = "https://data.pyg.org/whl/torch-1.12.1+cu116.html"
+
+[tool.setuptools]
+py-modules = []
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

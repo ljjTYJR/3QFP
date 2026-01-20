@@ -137,7 +137,8 @@ class Mesher():
                         xz_mask_c = torch.all(xz_mask, dim=1)
                         yz_mask_c = torch.all(yz_mask, dim=1)
                         mask_mc = xy_mask_c & xz_mask_c & yz_mask_c
-                    mc_mask = torch.all(mask_mc, dim=1).detach().cpu().numpy()
+                    # mc_mask = torch.all(mask_mc, dim=1).detach().cpu().numpy()
+                    mc_mask = mask_mc.detach().cpu().numpy()
 
         return sdf_pred, sem_pred, mc_mask
 
@@ -164,7 +165,7 @@ class Mesher():
         voxel_num_xyz[2]+=1
 
         voxel_count_total = voxel_num_xyz[0] * voxel_num_xyz[1] * voxel_num_xyz[2]
-        if voxel_count_total > 1e8: # TODO: avoid gpu memory issue, dirty fix
+        if voxel_count_total > 2*1e8: # TODO: avoid gpu memory issue, dirty fix
             self.cur_device = "cpu" # firstly save in cpu memory (which would be larger than gpu's)
             print("too much query points, use cpu memory")
         x = torch.arange(voxel_num_xyz[0], dtype=torch.int16, device=self.cur_device)
